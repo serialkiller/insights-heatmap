@@ -7,6 +7,11 @@ function parseTime(v) {
   return new Date(String(v).replace(' ', 'T') + 'Z').getTime();
 }
 
+function formatDateLabel(v) {
+  const d = new Date(String(v).replace(' ', 'T') + 'Z');
+  return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: '2-digit' });
+}
+
 function uniqueSortedTimes(rows) {
   return [...new Set(rows.map(r => r.generated_time))].sort((a, b) => parseTime(a) - parseTime(b));
 }
@@ -71,9 +76,9 @@ function render(rows) {
 
   times.forEach((t) => {
     const th = document.createElement('th');
-    th.textContent = t;
+    th.textContent = formatDateLabel(t);
     const { min, max } = colScales.get(t);
-    th.title = `Column scale\nmin: ${min.toFixed(4)}\nmax: ${max.toFixed(4)}`;
+    th.title = `${t}\nColumn scale\nmin: ${min.toFixed(4)}\nmax: ${max.toFixed(4)}`;
     hrow.appendChild(th);
   });
   thead.appendChild(hrow);
