@@ -1,0 +1,15 @@
+* { box-sizing: border-box; font-family: Inter, system-ui, sans-serif; }
+body { margin: 0; padding: 18px; background: #0b1020; color: #e5e7eb; }
+header h1 { margin: 0; }
+header p { margin-top: 6px; color: #93a3b8; }
+.controls { margin: 14px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+button, input[type=file] { background: #111827; color: #e5e7eb; border: 1px solid #374151; border-radius: 8px; padding: 8px; }
+.legend { display: flex; gap: 10px; align-items: center; margin: 8px 0 14px; }
+.legend-bar { width: 220px; height: 12px; border-radius: 999px; background: linear-gradient(90deg, #b91c1c 0%, #166534 100%); border: 1px solid #374151; }
+.table-wrap { overflow: auto; border: 1px solid #374151; border-radius: 12px; max-height: 72vh; background: #0f172a; }
+table { border-collapse: collapse; width: max-content; min-width: 100%; }
+th, td { border: 1px solid #243044; padding: 6px 8px; text-align: center; font-size: 12px; }
+thead th { position: sticky; top: 0; z-index: 2; background: #111827; }
+th.sticky-col, td.sticky-col { position: sticky; left: 0; z-index: 1; background: #111827; text-align: left; min-width: 80px; }
+tbody td { min-width: 84px; }
+.muted { color: #93a3b8; }
