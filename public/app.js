@@ -106,7 +106,7 @@ function render(rows) {
         const wp = (w * 100).toFixed(2);
         const minp = (min * 100).toFixed(2);
         const maxp = (max * 100).toFixed(2);
-        td.innerHTML = `<div class="cell-wrap"><span>${wp}%</span><span class="trend ${trend.cls}">${trend.s}</span></div>`;
+        td.innerHTML = `<div class="cell-wrap"><span>${wp}</span><span class="trend ${trend.cls}">${trend.s}</span></div>`;
         td.title = `${ticker}\n${t}\nweight: ${wp}%\ncolumn min/max: ${minp}% / ${maxp}%\ntrend vs left: ${trend.s}`;
         prevWeight = w;
       } else {
