@@ -8,7 +8,7 @@ function parseTime(v) {
 }
 
 function uniqueSortedTimes(rows) {
-  return [...new Set(rows.map(r => r.generated_time))].sort((a,b) => parseTime(a) - parseTime(b));
+  return [...new Set(rows.map(r => r.generated_time))].sort((a, b) => parseTime(a) - parseTime(b));
 }
 
 function uniqueTickers(rows) {
@@ -19,10 +19,32 @@ function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 
 function weightToColor(weight, min, max) {
   const t = max === min ? 0.5 : clamp01((weight - min) / (max - min));
-  const r = Math.round(185 * (1 - t) + 22 * t); // red -> green
+  const r = Math.round(185 * (1 - t) + 22 * t);
   const g = Math.round(28 * (1 - t) + 101 * t);
   const b = Math.round(28 * (1 - t) + 52 * t);
   return `rgb(${r}, ${g}, ${b})`;
+}
+
+function columnMinMax(rows, times) {
+  const out = new Map();
+  times.forEach((t) => {
+    const vals = rows
+      .filter((r) => r.generated_time === t)
+      .map((r) => Number(r.weight))
+      .filter(Number.isFinite);
+    out.set(t, {
+      min: vals.length ? Math.min(...vals) : 0,
+      max: vals.length ? Math.max(...vals) : 1
+    });
+  });
+  return out;
+}
+
+function trendSymbol(prev, curr) {
+  if (!Number.isFinite(prev) || !Number.isFinite(curr)) return { s: '•', cls: 'flat' };
+  if (curr > prev) return { s: '▲', cls: 'up' };
+  if (curr < prev) return { s: '▼', cls: 'down' };
+  return { s: '•', cls: 'flat' };
 }
 
 function render(rows) {
@@ -34,12 +56,10 @@ function render(rows) {
 
   const times = uniqueSortedTimes(rows);
   const tickers = uniqueTickers(rows);
-  const byKey = new Map(rows.map(r => [`${r.ticker}__${r.generated_time}`, r]));
-  const weights = rows.map(r => Number(r.weight)).filter(Number.isFinite);
-  const min = Math.min(...weights);
-  const max = Math.max(...weights);
+  const byKey = new Map(rows.map((r) => [`${r.ticker}__${r.generated_time}`, r]));
+  const colScales = columnMinMax(rows, times);
 
-  stats.textContent = `${rows.length} signals • ${tickers.length} tickers • ${times.length} time buckets • weight min ${min.toFixed(4)} max ${max.toFixed(4)}`;
+  stats.textContent = `${rows.length} signals • ${tickers.length} tickers • ${times.length} time buckets • color scale: per-column min/max`;
 
   const table = document.createElement('table');
   const thead = document.createElement('thead');
@@ -49,30 +69,38 @@ function render(rows) {
   corner.textContent = 'Ticker';
   hrow.appendChild(corner);
 
-  times.forEach(t => {
+  times.forEach((t) => {
     const th = document.createElement('th');
     th.textContent = t;
+    const { min, max } = colScales.get(t);
+    th.title = `Column scale\nmin: ${min.toFixed(4)}\nmax: ${max.toFixed(4)}`;
     hrow.appendChild(th);
   });
   thead.appendChild(hrow);
   table.appendChild(thead);
 
   const tbody = document.createElement('tbody');
-  tickers.forEach(ticker => {
+  tickers.forEach((ticker) => {
     const tr = document.createElement('tr');
     const th = document.createElement('th');
     th.className = 'sticky-col';
     th.textContent = ticker;
     tr.appendChild(th);
 
-    times.forEach(t => {
+    let prevWeight = NaN;
+
+    times.forEach((t) => {
       const td = document.createElement('td');
       const row = byKey.get(`${ticker}__${t}`);
       if (row && Number.isFinite(Number(row.weight))) {
         const w = Number(row.weight);
-        td.textContent = w.toFixed(4);
+        const { min, max } = colScales.get(t);
         td.style.background = weightToColor(w, min, max);
-        td.title = `${ticker}\n${t}\nweight: ${w}`;
+
+        const trend = trendSymbol(prevWeight, w);
+        td.innerHTML = `<div class="cell-wrap"><span>${w.toFixed(4)}</span><span class="trend ${trend.cls}">${trend.s}</span></div>`;
+        td.title = `${ticker}\n${t}\nweight: ${w}\ncolumn min/max: ${min.toFixed(4)} / ${max.toFixed(4)}\ntrend vs left: ${trend.s}`;
+        prevWeight = w;
       } else {
         td.textContent = '—';
         td.style.color = '#93a3b8';

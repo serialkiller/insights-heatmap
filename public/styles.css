@@ -9,7 +9,13 @@ button, input[type=file] { background: #111827; color: #e5e7eb; border: 1px soli
 .table-wrap { overflow: auto; border: 1px solid #374151; border-radius: 12px; max-height: 72vh; background: #0f172a; }
 table { border-collapse: collapse; width: max-content; min-width: 100%; }
 th, td { border: 1px solid #243044; padding: 6px 8px; text-align: center; font-size: 12px; }
-thead th { position: sticky; top: 0; z-index: 2; background: #111827; }
-th.sticky-col, td.sticky-col { position: sticky; left: 0; z-index: 1; background: #111827; text-align: left; min-width: 80px; }
-tbody td { min-width: 84px; }
+thead th { position: sticky; top: 0; z-index: 3; background: #111827; }
+th.sticky-col, td.sticky-col { position: sticky; left: 0; z-index: 2; background: #111827; text-align: left; min-width: 80px; }
+thead th.sticky-col { z-index: 4; }
+tbody td { min-width: 96px; position: relative; }
+.cell-wrap { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.trend { font-size: 10px; opacity: 0.95; }
+.trend.up { color: #86efac; }
+.trend.down { color: #fca5a5; }
+.trend.flat { color: #cbd5e1; }
 .muted { color: #93a3b8; }
