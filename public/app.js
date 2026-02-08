@@ -64,7 +64,7 @@ function render(rows) {
   const byKey = new Map(rows.map((r) => [`${r.ticker}__${r.generated_time}`, r]));
   const colScales = columnMinMax(rows, times);
 
-  stats.textContent = `${rows.length} signals • ${tickers.length} tickers • ${times.length} time buckets • color scale: per-column min/max`;
+  stats.textContent = `${rows.length} signals • ${tickers.length} tickers • ${times.length} time buckets • color scale: per-column min/max (percent view)`;
 
   const table = document.createElement('table');
   const thead = document.createElement('thead');
@@ -103,8 +103,11 @@ function render(rows) {
         td.style.background = weightToColor(w, min, max);
 
         const trend = trendSymbol(prevWeight, w);
-        td.innerHTML = `<div class="cell-wrap"><span>${w.toFixed(4)}</span><span class="trend ${trend.cls}">${trend.s}</span></div>`;
-        td.title = `${ticker}\n${t}\nweight: ${w}\ncolumn min/max: ${min.toFixed(4)} / ${max.toFixed(4)}\ntrend vs left: ${trend.s}`;
+        const wp = (w * 100).toFixed(2);
+        const minp = (min * 100).toFixed(2);
+        const maxp = (max * 100).toFixed(2);
+        td.innerHTML = `<div class="cell-wrap"><span>${wp}%</span><span class="trend ${trend.cls}">${trend.s}</span></div>`;
+        td.title = `${ticker}\n${t}\nweight: ${wp}%\ncolumn min/max: ${minp}% / ${maxp}%\ntrend vs left: ${trend.s}`;
         prevWeight = w;
       } else {
         td.textContent = '—';
