@@ -19,3 +19,4 @@ tbody td { min-width: 96px; position: relative; }
 .trend.down { color: #fca5a5; }
 .trend.flat { color: #cbd5e1; }
 .muted { color: #93a3b8; }
+.active-icon { font-size: 13px; opacity: 0.95; }
