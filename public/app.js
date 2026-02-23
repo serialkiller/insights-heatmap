@@ -37,6 +37,16 @@ function uniqueTickers(rows) {
 
 function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 
+function weightNumber(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
+  if (typeof v === 'string') {
+    const cleaned = v.trim().replace(/,/g, '').replace(/%/g, '');
+    const n = Number.parseFloat(cleaned);
+    return Number.isFinite(n) ? n : NaN;
+  }
+  return NaN;
+}
+
 function weightToColor(weight, min, max) {
   const t = max === min ? 0.5 : clamp01((weight - min) / (max - min));
   const r = Math.round(185 * (1 - t) + 22 * t);
@@ -50,7 +60,7 @@ function columnMinMax(rows, times) {
   times.forEach((t) => {
     const vals = rows
       .filter((r) => r.generated_time === t)
-      .map((r) => Number(r.weight))
+      .map((r) => weightNumber(r.weight))
       .filter(Number.isFinite);
     out.set(t, {
       min: vals.length ? Math.min(...vals) : 0,
@@ -150,8 +160,10 @@ function sortTickerByColumn(tickers, byKey) {
 
     const aRow = byKey.get(`${a}__${key}`);
     const bRow = byKey.get(`${b}__${key}`);
-    const aVal = aRow && Number.isFinite(Number(aRow.weight)) ? Number(aRow.weight) : null;
-    const bVal = bRow && Number.isFinite(Number(bRow.weight)) ? Number(bRow.weight) : null;
+    const aParsed = aRow ? weightNumber(aRow.weight) : NaN;
+    const bParsed = bRow ? weightNumber(bRow.weight) : NaN;
+    const aVal = Number.isFinite(aParsed) ? aParsed : null;
+    const bVal = Number.isFinite(bParsed) ? bParsed : null;
 
     // Always push missing values to the end, regardless of direction.
     if (aVal === null && bVal === null) return a.localeCompare(b);
@@ -249,10 +261,11 @@ function render(rows) {
       const td = document.createElement('td');
       const row = byKey.get(`${ticker}__${t}`);
       const tMs = parseTime(t);
-      const hasWeight = row && Number.isFinite(Number(row.weight));
+      const parsedWeight = row ? weightNumber(row.weight) : NaN;
+      const hasWeight = Number.isFinite(parsedWeight);
 
       if (hasWeight) {
-        const w = Number(row.weight);
+        const w = parsedWeight;
         const { min, max } = colScales.get(t);
         td.style.background = weightToColor(w, min, max);
 
