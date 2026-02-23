@@ -95,6 +95,13 @@ function latestInsightAtOrBefore(history, atMs) {
   return candidate;
 }
 
+function normalizeRows(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.rows)) return payload.rows;
+  if (payload && Array.isArray(payload.insights)) return payload.insights;
+  return [];
+}
+
 function render(rows) {
   if (!Array.isArray(rows) || rows.length === 0) {
     tableWrap.innerHTML = '<p class="muted" style="padding:12px">No rows found.</p>';
@@ -198,7 +205,7 @@ fileInput.addEventListener('change', async (e) => {
   try {
     const text = await file.text();
     const json = JSON.parse(text);
-    render(json);
+    render(normalizeRows(json));
   } catch (err) {
     tableWrap.innerHTML = `<p class="muted" style="padding:12px">Failed to parse JSON: ${err.message}</p>`;
   }
@@ -212,3 +219,21 @@ sampleBtn.addEventListener('click', () => {
     { ticker: 'MSFT', generated_time: '2026-01-02 10:00:00', weight: 0.88, close_time: '2026-01-03 12:00:00' }
   ]);
 });
+
+async function loadLatestFromServer() {
+  try {
+    const res = await fetch('/api/insights/latest');
+    if (!res.ok) return;
+    const payload = await res.json();
+    const rows = normalizeRows(payload);
+    if (rows.length) {
+      render(rows);
+      const stamp = payload?.receivedAt ? ` • latest webhook: ${new Date(payload.receivedAt).toLocaleString()}` : '';
+      stats.textContent += stamp;
+    }
+  } catch (_err) {
+    // silent fallback to manual upload
+  }
+}
+
+loadLatestFromServer();
