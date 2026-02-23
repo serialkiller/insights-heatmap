@@ -3,6 +3,9 @@ const tableWrap = document.getElementById('tableWrap');
 const stats = document.getElementById('stats');
 const sampleBtn = document.getElementById('sampleBtn');
 
+let currentRows = [];
+let sortState = { key: 'ticker', direction: 'asc' };
+
 function parseTime(v) {
   if (v === null || v === undefined || v === '') return NaN;
   const s = String(v).trim();
@@ -102,7 +105,37 @@ function normalizeRows(payload) {
   return [];
 }
 
+function sortIndicator(key) {
+  if (sortState.key !== key) return '';
+  return sortState.direction === 'asc' ? ' ↑' : ' ↓';
+}
+
+function sortTickerByColumn(tickers, byKey) {
+  const { key, direction } = sortState;
+  const dir = direction === 'asc' ? 1 : -1;
+
+  return [...tickers].sort((a, b) => {
+    if (key === 'ticker') {
+      return a.localeCompare(b) * dir;
+    }
+
+    const aRow = byKey.get(`${a}__${key}`);
+    const bRow = byKey.get(`${b}__${key}`);
+    const aVal = aRow && Number.isFinite(Number(aRow.weight)) ? Number(aRow.weight) : null;
+    const bVal = bRow && Number.isFinite(Number(bRow.weight)) ? Number(bRow.weight) : null;
+
+    // Always push missing values to the end, regardless of direction.
+    if (aVal === null && bVal === null) return a.localeCompare(b);
+    if (aVal === null) return 1;
+    if (bVal === null) return -1;
+
+    if (aVal === bVal) return a.localeCompare(b);
+    return (aVal - bVal) * dir;
+  });
+}
+
 function render(rows) {
+  currentRows = Array.isArray(rows) ? rows : [];
   if (!Array.isArray(rows) || rows.length === 0) {
     tableWrap.innerHTML = '<p class="muted" style="padding:12px">No rows found.</p>';
     stats.textContent = '';
@@ -112,6 +145,7 @@ function render(rows) {
   const times = uniqueSortedTimes(rows);
   const tickers = uniqueTickers(rows);
   const byKey = new Map(rows.map((r) => [`${r.ticker}__${r.generated_time}`, r]));
+  const displayTickers = sortTickerByColumn(tickers, byKey);
   const colScales = columnMinMax(rows, times);
   const tickerHistory = buildTickerHistory(rows);
   const latestBucketTimeMs = Math.max(...times.map(parseTime).filter(Number.isFinite));
@@ -123,22 +157,40 @@ function render(rows) {
   const thead = document.createElement('thead');
   const hrow = document.createElement('tr');
   const corner = document.createElement('th');
-  corner.className = 'sticky-col';
-  corner.textContent = 'Ticker';
+  corner.className = 'sticky-col sortable';
+  corner.textContent = `Ticker${sortIndicator('ticker')}`;
+  corner.title = 'Sort by ticker';
+  corner.addEventListener('click', () => {
+    if (sortState.key === 'ticker') {
+      sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortState = { key: 'ticker', direction: 'asc' };
+    }
+    render(currentRows);
+  });
   hrow.appendChild(corner);
 
   times.forEach((t) => {
     const th = document.createElement('th');
-    th.textContent = formatDateLabel(t);
+    th.className = 'sortable';
+    th.textContent = `${formatDateLabel(t)}${sortIndicator(t)}`;
     const { min, max } = colScales.get(t);
-    th.title = `${t}\nColumn scale\nmin: ${min.toFixed(4)}\nmax: ${max.toFixed(4)}`;
+    th.title = `${t}\nColumn scale\nmin: ${min.toFixed(4)}\nmax: ${max.toFixed(4)}\n(click to sort by this column)`;
+    th.addEventListener('click', () => {
+      if (sortState.key === t) {
+        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState = { key: t, direction: 'desc' };
+      }
+      render(currentRows);
+    });
     hrow.appendChild(th);
   });
   thead.appendChild(hrow);
   table.appendChild(thead);
 
   const tbody = document.createElement('tbody');
-  tickers.forEach((ticker) => {
+  displayTickers.forEach((ticker) => {
     const tr = document.createElement('tr');
     const th = document.createElement('th');
     th.className = 'sticky-col';
