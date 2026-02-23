@@ -205,7 +205,25 @@ fileInput.addEventListener('change', async (e) => {
   try {
     const text = await file.text();
     const json = JSON.parse(text);
-    render(normalizeRows(json));
+    const rows = normalizeRows(json);
+    render(rows);
+
+    // Persist manual uploads through the same API used by webhooks
+    const saveRes = await fetch('/api/insights', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(rows)
+    });
+
+    if (saveRes.ok) {
+      const saved = await saveRes.json();
+      const suffix = saved?.receivedAt ? ` • saved: ${new Date(saved.receivedAt).toLocaleString()}` : ' • saved';
+      stats.textContent += suffix;
+    } else {
+      const errPayload = await saveRes.json().catch(() => ({}));
+      const msg = errPayload?.error || `HTTP ${saveRes.status}`;
+      stats.textContent += ` • save failed: ${msg}`;
+    }
   } catch (err) {
     tableWrap.innerHTML = `<p class="muted" style="padding:12px">Failed to parse JSON: ${err.message}</p>`;
   }
