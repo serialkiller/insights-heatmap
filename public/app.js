@@ -195,9 +195,12 @@ function render(rows) {
   const hrow = document.createElement('tr');
   const corner = document.createElement('th');
   corner.className = 'sticky-col sortable';
-  corner.textContent = `Ticker${sortIndicator('ticker')}`;
-  corner.title = 'Sort by ticker';
-  corner.addEventListener('click', () => {
+  const cornerBtn = document.createElement('button');
+  cornerBtn.type = 'button';
+  cornerBtn.className = 'th-btn';
+  cornerBtn.textContent = `Ticker${sortIndicator('ticker')}`;
+  cornerBtn.title = 'Sort by ticker';
+  cornerBtn.addEventListener('click', () => {
     if (sortState.key === 'ticker') {
       sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
     } else {
@@ -205,15 +208,19 @@ function render(rows) {
     }
     render(currentRows);
   });
+  corner.appendChild(cornerBtn);
   hrow.appendChild(corner);
 
   times.forEach((t) => {
     const th = document.createElement('th');
     th.className = 'sortable';
-    th.textContent = `${formatDateLabel(t)}${sortIndicator(t)}`;
+    const thBtn = document.createElement('button');
+    thBtn.type = 'button';
+    thBtn.className = 'th-btn';
+    thBtn.textContent = `${formatDateLabel(t)}${sortIndicator(t)}`;
     const { min, max } = colScales.get(t);
-    th.title = `${t}\nColumn scale\nmin: ${min.toFixed(4)}\nmax: ${max.toFixed(4)}\n(click to sort by this column)`;
-    th.addEventListener('click', () => {
+    thBtn.title = `${t}\nColumn scale\nmin: ${min.toFixed(4)}\nmax: ${max.toFixed(4)}\n(click to sort by this column)`;
+    thBtn.addEventListener('click', () => {
       if (sortState.key === t) {
         sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
       } else {
@@ -221,6 +228,7 @@ function render(rows) {
       }
       render(currentRows);
     });
+    th.appendChild(thBtn);
     hrow.appendChild(th);
   });
   thead.appendChild(hrow);
