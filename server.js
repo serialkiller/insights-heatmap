@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import { Redis } from '@upstash/redis';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,7 +10,15 @@ const app = express();
 const PORT = process.env.PORT || 3040;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const LATEST_FILE = path.join(DATA_DIR, 'latest.json');
+const LATEST_KEY = process.env.INSIGHTS_LATEST_KEY || 'insights:latest';
 const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN || '';
+
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redis =
+  redisUrl && redisToken
+    ? new Redis({ url: redisUrl, token: redisToken })
+    : null;
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -26,19 +35,40 @@ function looksLikeInsightRow(row) {
 }
 
 async function readLatestInsights() {
+  if (redis) {
+    const payload = await redis.get(LATEST_KEY);
+    const rows = normalizeRows(payload) || [];
+    return { rows, receivedAt: payload?.receivedAt || null, source: 'upstash' };
+  }
+
   const raw = await fs.readFile(LATEST_FILE, 'utf8');
   const parsed = JSON.parse(raw);
-  return normalizeRows(parsed) || [];
+  const rows = normalizeRows(parsed) || [];
+  return { rows, receivedAt: parsed?.receivedAt || null, source: 'file' };
+}
+
+async function storeLatestInsights(payload) {
+  if (redis) {
+    await redis.set(LATEST_KEY, payload);
+    return 'upstash';
+  }
+
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(LATEST_FILE, JSON.stringify(payload, null, 2), 'utf8');
+  return 'file';
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, app: 'insights-heatmap' });
+  res.json({ ok: true, app: 'insights-heatmap', storage: redis ? 'upstash' : 'file' });
 });
 
 app.get('/api/insights/latest', async (_req, res) => {
   try {
-    const rows = await readLatestInsights();
-    res.json({ ok: true, rows, count: rows.length });
+    const { rows, receivedAt, source } = await readLatestInsights();
+    if (!rows.length) {
+      return res.status(404).json({ ok: false, error: 'No insights uploaded yet' });
+    }
+    return res.json({ ok: true, rows, count: rows.length, receivedAt, source });
   } catch (err) {
     if (err.code === 'ENOENT') {
       return res.status(404).json({ ok: false, error: 'No insights uploaded yet' });
@@ -65,15 +95,14 @@ app.post('/api/insights', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Each row must include ticker and generated_time' });
     }
 
-    await fs.mkdir(DATA_DIR, { recursive: true });
     const payload = {
       receivedAt: new Date().toISOString(),
       count: rows.length,
       rows
     };
-    await fs.writeFile(LATEST_FILE, JSON.stringify(payload, null, 2), 'utf8');
 
-    return res.json({ ok: true, count: rows.length, receivedAt: payload.receivedAt });
+    const source = await storeLatestInsights(payload);
+    return res.json({ ok: true, count: rows.length, receivedAt: payload.receivedAt, source });
   } catch (err) {
     return res.status(500).json({ ok: false, error: 'Failed to store insights' });
   }
@@ -82,4 +111,5 @@ app.post('/api/insights', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`insights-heatmap running on http://localhost:${PORT}`);
   console.log(`latest insights endpoint: http://localhost:${PORT}/api/insights/latest`);
+  console.log(`storage backend: ${redis ? 'upstash redis' : 'local file'}`);
 });

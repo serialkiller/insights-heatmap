@@ -39,6 +39,13 @@ Set `WEBHOOK_TOKEN` and send it in header `x-webhook-token`.
 
 If `WEBHOOK_TOKEN` is not set, webhook is open (not recommended for production).
 
+### Storage backend
+
+- **Production (recommended):** Upstash Redis via Vercel env vars:
+  - `UPSTASH_REDIS_REST_URL`
+  - `UPSTASH_REDIS_REST_TOKEN`
+- **Local fallback:** if Upstash vars are missing, app stores to `data/latest.json`.
+
 ## Run
 
 ```bash
@@ -48,7 +55,8 @@ WEBHOOK_TOKEN=change-me npm start
 
 Server defaults:
 - Port: `3040` (override with `PORT`)
-- Data file: `./data/latest.json` (override with `DATA_DIR`)
+- Redis key: `insights:latest` (override with `INSIGHTS_LATEST_KEY`)
+- Local fallback file: `./data/latest.json` (override with `DATA_DIR`)
 
 ## Test webhook
 
