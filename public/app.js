@@ -2,8 +2,11 @@ const fileInput = document.getElementById('fileInput');
 const tableWrap = document.getElementById('tableWrap');
 const stats = document.getElementById('stats');
 const sampleBtn = document.getElementById('sampleBtn');
+const sortColumn = document.getElementById('sortColumn');
+const sortDirBtn = document.getElementById('sortDirBtn');
 
 let currentRows = [];
+let currentTimes = [];
 let sortState = { key: 'ticker', direction: 'asc' };
 
 function parseTime(v) {
@@ -110,6 +113,32 @@ function sortIndicator(key) {
   return sortState.direction === 'asc' ? ' ↑' : ' ↓';
 }
 
+function syncSortControls() {
+  if (!sortColumn || !sortDirBtn) return;
+
+  const wanted = ['ticker', ...currentTimes];
+  const existing = [...sortColumn.options].map((o) => o.value);
+  const changed = wanted.length !== existing.length || wanted.some((v, i) => v !== existing[i]);
+
+  if (changed) {
+    sortColumn.innerHTML = '';
+    const tickerOpt = document.createElement('option');
+    tickerOpt.value = 'ticker';
+    tickerOpt.textContent = 'Ticker';
+    sortColumn.appendChild(tickerOpt);
+
+    currentTimes.forEach((t) => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = formatDateLabel(t);
+      sortColumn.appendChild(opt);
+    });
+  }
+
+  sortColumn.value = sortState.key;
+  sortDirBtn.textContent = sortState.direction === 'asc' ? '↑ Asc' : '↓ Desc';
+}
+
 function sortTickerByColumn(tickers, byKey) {
   const { key, direction } = sortState;
   const dir = direction === 'asc' ? 1 : -1;
@@ -137,12 +166,20 @@ function sortTickerByColumn(tickers, byKey) {
 function render(rows) {
   currentRows = Array.isArray(rows) ? rows : [];
   if (!Array.isArray(rows) || rows.length === 0) {
+    currentTimes = [];
+    syncSortControls();
     tableWrap.innerHTML = '<p class="muted" style="padding:12px">No rows found.</p>';
     stats.textContent = '';
     return;
   }
 
   const times = uniqueSortedTimes(rows);
+  currentTimes = times;
+  if (sortState.key !== 'ticker' && !times.includes(sortState.key)) {
+    sortState = { key: 'ticker', direction: 'asc' };
+  }
+  syncSortControls();
+
   const tickers = uniqueTickers(rows);
   const byKey = new Map(rows.map((r) => [`${r.ticker}__${r.generated_time}`, r]));
   const displayTickers = sortTickerByColumn(tickers, byKey);
@@ -289,6 +326,20 @@ sampleBtn.addEventListener('click', () => {
     { ticker: 'MSFT', generated_time: '2026-01-02 10:00:00', weight: 0.88, close_time: '2026-01-03 12:00:00' }
   ]);
 });
+
+if (sortColumn) {
+  sortColumn.addEventListener('change', (e) => {
+    sortState.key = e.target.value;
+    render(currentRows);
+  });
+}
+
+if (sortDirBtn) {
+  sortDirBtn.addEventListener('click', () => {
+    sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+    render(currentRows);
+  });
+}
 
 async function loadLatestFromServer() {
   try {
